@@ -1,0 +1,5 @@
+/* Custom CSS not expressible via Tailwind utilities in the CDN build. Kept intentionally small. */
+
+[x-cloak] {
+    display: none !important;
+}
