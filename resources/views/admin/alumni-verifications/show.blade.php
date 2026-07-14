@@ -7,7 +7,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-xl font-semibold">{{ $profile->user->name }}</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $profile->user->email }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $profile->user->email }}{{ $profile->user->phone ? ' · '.$profile->user->phone : '' }}</p>
             </div>
 
             @php

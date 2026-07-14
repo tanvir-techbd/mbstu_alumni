@@ -18,14 +18,14 @@
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Management</p>
             <x-sidebar-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">Users</x-sidebar-link>
             <x-sidebar-link :href="route('admin.alumni-verifications.index')" :active="request()->routeIs('admin.alumni-verifications.*')">Alumni Verification</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Alumni Directory</x-sidebar-link>
+            <x-sidebar-link :href="route('directory.index')" :active="request()->routeIs('directory.*')">Alumni Directory</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Content</p>
-            <x-sidebar-link href="#" soon>Events</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Jobs</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Notice Board</x-sidebar-link>
+            <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
+            <x-sidebar-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">Jobs</x-sidebar-link>
+            <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
             <x-sidebar-link href="#" soon>Success Stories</x-sidebar-link>
             <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
             <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
@@ -42,17 +42,17 @@
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Alumni</p>
             <x-sidebar-link :href="route('alumni.profile.edit')" :active="request()->routeIs('alumni.profile.*')">My Profile</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Alumni Directory</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Post a Job</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Mentorship Requests</x-sidebar-link>
+            <x-sidebar-link :href="route('directory.index')" :active="request()->routeIs('directory.*')">Alumni Directory</x-sidebar-link>
+            <x-sidebar-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">Jobs</x-sidebar-link>
+            <x-sidebar-link :href="route('mentorship.index')" :active="request()->routeIs('mentorship.*')">Mentorship Requests</x-sidebar-link>
             <x-sidebar-link href="#" soon>Submit Success Story</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Community</p>
-            <x-sidebar-link href="#" soon>Events</x-sidebar-link>
+            <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
             <x-sidebar-link href="#" soon>Donations</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Notice Board</x-sidebar-link>
+            <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
             <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
             <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
         </div>
@@ -61,15 +61,15 @@
     @role('student')
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Student</p>
-            <x-sidebar-link href="#" soon>Job Board</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Find a Mentor</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Events</x-sidebar-link>
+            <x-sidebar-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">Job Board</x-sidebar-link>
+            <x-sidebar-link :href="route('mentorship.index')" :active="request()->routeIs('mentorship.*')">My Mentorship</x-sidebar-link>
+            <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Resources</p>
-            <x-sidebar-link href="#" soon>Alumni Directory</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Notice Board</x-sidebar-link>
+            <x-sidebar-link :href="route('directory.index')" :active="request()->routeIs('directory.*')">Alumni Directory</x-sidebar-link>
+            <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
             <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
             <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
         </div>
@@ -78,13 +78,13 @@
     @role('faculty')
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Faculty</p>
-            <x-sidebar-link href="#" soon>Events</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Notice Board</x-sidebar-link>
+            <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
+            <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Resources</p>
-            <x-sidebar-link href="#" soon>Alumni Directory</x-sidebar-link>
+            <x-sidebar-link :href="route('directory.index')" :active="request()->routeIs('directory.*')">Alumni Directory</x-sidebar-link>
             <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
             <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
         </div>

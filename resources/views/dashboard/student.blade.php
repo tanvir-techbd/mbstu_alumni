@@ -10,10 +10,10 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <x-stat-card-placeholder label="Saved Jobs" milestone="M6 — Job Portal" />
-            <x-stat-card-placeholder label="Applied Mentorship" milestone="M7 — Mentorship" />
-            <x-stat-card-placeholder label="Upcoming Events" milestone="M5 — Events" />
-            <x-stat-card-placeholder label="Notices" milestone="M8 — Notice Board" />
+            <x-stat-card label="Saved Jobs" :value="$savedJobs" />
+            <x-stat-card label="Applied Mentorship" :value="$mentorshipRequests" />
+            <x-stat-card label="Upcoming Events" :value="$upcomingEvents" />
+            <x-stat-card label="Notices" :value="$totalNotices" />
         </div>
     </div>
 </x-app-layout>

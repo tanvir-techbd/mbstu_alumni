@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\VerificationStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,6 +51,11 @@ class AlumniProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scopeApproved(Builder $query): void
+    {
+        $query->where('verification_status', VerificationStatus::Approved);
     }
 
     public function reviewer(): BelongsTo

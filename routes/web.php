@@ -20,4 +20,9 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/admin.php';
 require __DIR__.'/alumni.php';
+require __DIR__.'/directory.php';
+require __DIR__.'/events.php';
+require __DIR__.'/jobs.php';
+require __DIR__.'/mentorship.php';
+require __DIR__.'/notices.php';
 require __DIR__.'/auth.php';

@@ -10,9 +10,9 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <x-stat-card-placeholder label="Published Events" milestone="M5 — Events" />
-            <x-stat-card-placeholder label="Notices" milestone="M8 — Notice Board" />
-            <x-stat-card-placeholder label="Alumni Statistics" milestone="M4 — Alumni Directory" />
+            <x-stat-card label="Published Events" :value="$publishedEvents" />
+            <x-stat-card label="Notices Posted" :value="$postedNotices" />
+            <x-stat-card label="Verified Alumni" :value="$verifiedAlumni" />
         </div>
     </div>
 </x-app-layout>

@@ -11,9 +11,9 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <x-stat-card label="Profile Completion" :value="$profile->completionPercentage() . '%'" />
-            <x-stat-card-placeholder label="Upcoming Events" milestone="M5 — Events" />
-            <x-stat-card-placeholder label="Posted Jobs" milestone="M6 — Job Portal" />
-            <x-stat-card-placeholder label="Mentorship Requests" milestone="M7 — Mentorship" />
+            <x-stat-card label="Upcoming Events" :value="$upcomingEvents" />
+            <x-stat-card label="Posted Jobs" :value="$postedJobs" />
+            <x-stat-card label="Mentorship Requests" :value="$pendingMentorshipRequests" :hint="$pendingMentorshipRequests > 0 ? 'Needs response' : null" hintTone="warning" />
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -19,7 +19,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <x-stat-card label="Verified Alumni" :value="$verifiedAlumni" />
             <x-stat-card label="Pending Verification" :value="$pendingVerification" :hint="$pendingVerification > 0 ? 'Needs review' : null" hintTone="warning" />
-            <x-stat-card-placeholder label="Events" milestone="M5 — Events" />
+            <x-stat-card label="Events" :value="$totalEvents" />
             <x-stat-card-placeholder label="Jobs" milestone="M6 — Job Portal" />
         </div>
 
