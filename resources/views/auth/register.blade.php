@@ -2,8 +2,24 @@
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
-        <!-- Name -->
+        <!-- Role -->
         <div>
+            <x-input-label :value="__('I am a...')" />
+            <div class="mt-2 grid grid-cols-2 gap-3">
+                <label class="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm cursor-pointer has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 dark:has-[:checked]:bg-primary-500/10">
+                    <input type="radio" name="role" value="alumni" class="text-primary-600 focus:ring-primary-500" @checked(old('role', 'alumni') === 'alumni') required>
+                    Alumni
+                </label>
+                <label class="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm cursor-pointer has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 dark:has-[:checked]:bg-primary-500/10">
+                    <input type="radio" name="role" value="student" class="text-primary-600 focus:ring-primary-500" @checked(old('role') === 'student') required>
+                    Student
+                </label>
+            </div>
+            <x-input-error :messages="$errors->get('role')" class="mt-2" />
+        </div>
+
+        <!-- Name -->
+        <div class="mt-4">
             <x-input-label for="name" :value="__('Name')" />
             <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
             <x-input-error :messages="$errors->get('name')" class="mt-2" />

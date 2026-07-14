@@ -2,11 +2,16 @@
 
 namespace App\Services;
 
+use App\Enums\RoleName;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class UserManagementService
 {
+    public function __construct(private readonly AlumniProfileService $alumniProfiles)
+    {
+    }
+
     public function create(array $data): User
     {
         $user = User::create([
@@ -19,6 +24,10 @@ class UserManagementService
         ]);
 
         $user->syncRoles([$data['role']]);
+
+        if ($data['role'] === RoleName::Alumni->value) {
+            $this->alumniProfiles->ensureProfileExists($user);
+        }
 
         return $user;
     }
@@ -38,6 +47,10 @@ class UserManagementService
 
         $user->save();
         $user->syncRoles([$data['role']]);
+
+        if ($data['role'] === RoleName::Alumni->value) {
+            $this->alumniProfiles->ensureProfileExists($user);
+        }
 
         return $user;
     }

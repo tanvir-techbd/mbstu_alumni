@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\RoleName;
+use App\Models\AlumniProfile;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -34,6 +35,7 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $alumni->assignRole(RoleName::Alumni->value);
+        AlumniProfile::factory()->for($alumni)->create();
 
         $student = User::factory()->create([
             'name' => 'Demo Student',
@@ -51,11 +53,20 @@ class DatabaseSeeder extends Seeder
         ]);
         $faculty->assignRole(RoleName::Faculty->value);
 
-        // Bulk test data for the User Management screen (search/filter/pagination).
-        User::factory(12)->create()->each(fn (User $user) => $user->assignRole(RoleName::Alumni->value));
+        // Bulk test data for the User Management screen (search/filter/pagination)
+        // and the Alumni Verification screen (mixed pending/approved/rejected profiles).
+        $bulkAlumni = User::factory(12)->create()->each(fn (User $user) => $user->assignRole(RoleName::Alumni->value));
+        $bulkAlumni->slice(0, 6)->each(fn (User $user) => AlumniProfile::factory()->for($user)->create());
+        $bulkAlumni->slice(6, 4)->each(fn (User $user) => AlumniProfile::factory()->approved()->for($user)->create(['reviewed_by' => $admin->id]));
+        $bulkAlumni->slice(10, 2)->each(fn (User $user) => AlumniProfile::factory()->rejected()->for($user)->create(['reviewed_by' => $admin->id]));
+
         User::factory(8)->create()->each(fn (User $user) => $user->assignRole(RoleName::Student->value));
         User::factory(5)->create()->each(fn (User $user) => $user->assignRole(RoleName::Faculty->value));
+
         User::factory(4)->create(['status' => User::STATUS_INACTIVE])
-            ->each(fn (User $user) => $user->assignRole(RoleName::Alumni->value));
+            ->each(function (User $user) {
+                $user->assignRole(RoleName::Alumni->value);
+                AlumniProfile::factory()->for($user)->create();
+            });
     }
 }

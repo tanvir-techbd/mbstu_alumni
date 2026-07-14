@@ -11,7 +11,7 @@ Suggested build order — dependency-driven (Directory needs Profiles; Notificat
 - [x] **M0 — Project scaffolding.** Laravel 12 + Breeze (blade, dark mode) + Spatie Permission + dompdf + Laravel Excel installed. Base roles seeded (`super-admin`, `alumni`, `student`, `faculty`). `users` table extended with `phone`, `status`, `profile_photo_path`. Dark/light mode toggle wired (Alpine store + no-FOUC script). `static_prototype_folder/` and `.claude/` set up.
 - [x] **M1 — Role-based dashboard shell.** Sticky sidebar + topbar layout (replaces Breeze's simple top nav), role-aware sidebar nav, breadcrumbs, `DashboardController` dispatches to one view per role with stat-card placeholders (real counts where `users`/roles data already exists, honest "Available after M-x" placeholders elsewhere).
 - [x] **M2 — User Management.** Admin CRUD on users under `/admin/users`, role assignment, activate/deactivate, search/filter/paginate, delete guarded against self-delete and deleting the last super-admin.
-- [ ] **M3 — Alumni Profile + Verification workflow.** `alumni_profiles` table, profile form (personal/academic/professional/social/skills/bio), document upload, pending→approved/rejected admin review flow.
+- [x] **M3 — Alumni Profile + Verification workflow.** `alumni_profiles` table (1:1 `users`), self-service profile form + photo/document upload, admin review queue with approve/reject, registration now assigns a role and auto-creates the profile.
 - [ ] **M4 — Alumni Directory.** Public search/sort over verified alumni only.
 - [ ] **M5 — Events.** CRUD + publish/archive, registration, capacity, participant export, attendance marking.
 - [ ] **M6 — Job Portal.** Post → pending approval → published workflow, browse/search/bookmark.
@@ -46,6 +46,39 @@ Suggested build order — dependency-driven (Directory needs Profiles; Notificat
 ## Progress log
 
 Newest entry first. One entry per milestone/session — what shipped, what's next, anything surprising. Read this before re-deriving context from scratch.
+
+### 2026-07-14 — M3: Alumni Profile + Verification workflow
+
+**Done**
+- `alumni_profiles` migration: 1:1 with `users` (FK unique, cascade delete), personal/academic/professional/social/additional fields all nullable (row exists from day one, filled progressively), plus `verification_status`/`verification_document_path`/`rejection_reason`/`reviewed_by`/`reviewed_at`. `App\Enums\VerificationStatus` (Pending/Approved/Rejected) cast on the model, matching the project's state-modeling convention.
+- `App\Models\AlumniProfile` — `skillList()` (comma-separated → array, no dedicated tags table yet, per the tech-decision note in `DESIGN.md`) and `completionPercentage()` (drives the alumni dashboard stat card).
+- `App\Policies\AlumniProfilePolicy` — owner or super-admin can view; only owner can update; only super-admin can `review` (approve/reject).
+- `App\Services\AlumniProfileService` — `ensureProfileExists`, `updateProfile`, `uploadProfilePhoto` (public disk), `uploadVerificationDocument` (private `local` disk, resets status to pending + clears rejection_reason on resubmit), `approve`, `reject`.
+- **Registration flow changed**: `auth/register.blade.php` now asks "I am a..." (Alumni/Student — faculty/admin stay staff-created via M2). `RegisteredUserController` assigns the chosen role and, for alumni, calls `ensureProfileExists()` immediately. This closes a real gap from M1: public registration previously assigned **no role at all**, which would have 403'd on `/dashboard`. `UserManagementService::create/update` also call `ensureProfileExists()` when an admin sets role=alumni.
+- Self-service: `Alumni\AlumniProfileController` under `/alumni/profile` (`role:alumni` middleware) — edit/update (big sectioned form: personal/academic/professional/social/additional), separate photo upload and document upload endpoints (separate `multipart` forms, separate Form Requests: `UploadProfilePhotoRequest` image-only 2MB, `UploadVerificationDocumentRequest` pdf/jpg/png 5MB).
+- Admin: `Admin\AlumniVerificationController` under `/admin/alumni-verifications` (`role:super-admin`) — status-filtered index (defaults to `pending`), a show page with full profile detail + document download link + inline approve/reject (reject requires a reason, `RejectAlumniProfileRequest`). Document download streams through `Storage::disk('local')->download()` behind the `review` policy check — never a public URL.
+- Dashboards updated with real data: admin's Verified Alumni / Pending Verification cards now query `AlumniProfile` counts instead of placeholders; alumni dashboard shows real `completionPercentage()` and a live verification-status badge linking to the profile page.
+- Sidebar: super-admin's "Alumni Verification" and alumni's new "My Profile" links wired to the real routes.
+- `AlumniProfileFactory` (`approved()`/`rejected()` states) + `DatabaseSeeder` updated: the demo alumni account and a spread of bulk-seeded alumni now get profiles in a realistic mix of pending/approved/rejected, so the verification queue has real data to review.
+
+**Bugs caught during verification (both fixed, not just noted)**
+1. **Document upload silently didn't persist.** `AlumniProfileService::uploadVerificationDocument/approve/reject` called `$profile->update([...])` with columns (`verification_status`, `verification_document_path`, `reviewed_by`, ...) that are deliberately absent from `AlumniProfile::$fillable` — correct for the *self-service* update path (a user must never mass-assign their own verification status), but that guard also silently dropped the fields when the *service* tried to write them, even though the file itself was actually saved to disk. The controller happily redirected with a success toast while the DB row was untouched — caught only because I checked the DB directly after the HTTP call, not just the HTTP status code. Fixed by switching those three service methods to `forceFill()->save()`, since they're trusted system-controlled writes, not user input flowing through mass assignment. `$fillable` stays scoped to exactly what the profile-edit Form Request validates.
+2. Initial document-upload test used a plain text file renamed `.pdf`, which correctly failed Laravel's real (magic-byte, not extension) MIME validation — not a bug, but worth remembering when hand-testing file uploads with curl: use a real minimal PDF (`%PDF-1.4...`), not a renamed `.txt`.
+
+**Verified — full HTTP click-through against the real LAMPP-backed `mbstu_alumni` DB** (migrate:fresh --seed, `php artisan serve`, cookie-jar curl, real files uploaded via multipart):
+- Registered a brand-new Alumni account → role assigned, profile auto-created with `status=pending`, confirmed via `tinker`.
+- Registered a brand-new Student account → role assigned, no profile created, dashboard reachable (no verification gate for students, per the brief).
+- Confirmed Breeze's `verified` middleware correctly gates `/dashboard` for both new registrations until email-verified (expected behavior, not a bug — had to mark them verified via `tinker` since this sandbox has no real mail transport).
+- Alumni profile update: posted real field values (student_id, department, skills, etc.) → persisted correctly, `completionPercentage()` computed 85% for a mostly-filled profile.
+- Alumni photo upload and document upload: both stored on the correct disk (`public` vs private `local`) and the file actually exists on disk (confirmed via `find`), not just a DB-path claim.
+- Admin verification index: pending-filter count matched exactly (12 = 11 seeded pending + 1 fresh registration).
+- Admin show page → document download returns the actual PDF bytes (`file` command confirms) when requested by the super-admin.
+- **Authorization boundary**: a `student`-role user got 403 on both `/alumni/profile` and the admin document-download URL. A `super-admin` downloading the same document got 200.
+- Approve → status flips to `approved`, `reviewed_by`/`reviewed_at` set correctly.
+- Reject without a reason → correctly rejected by Form Request validation (no state change). Reject with a reason → status flips to `rejected`, reason persisted.
+- Cleaned up all test accounts' uploaded files and reset to `migrate:fresh --seed` afterward.
+
+**Next milestone:** M4 — Alumni Directory (public search/sort over verified alumni only — reads `alumni_profiles` where `verification_status = approved`, no new table).
 
 ### 2026-07-14 — M2: User Management
 

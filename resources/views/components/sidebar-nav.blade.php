@@ -17,7 +17,7 @@
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Management</p>
             <x-sidebar-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">Users</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Alumni Verification</x-sidebar-link>
+            <x-sidebar-link :href="route('admin.alumni-verifications.index')" :active="request()->routeIs('admin.alumni-verifications.*')">Alumni Verification</x-sidebar-link>
             <x-sidebar-link href="#" soon>Alumni Directory</x-sidebar-link>
         </div>
 
@@ -41,6 +41,7 @@
     @role('alumni')
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Alumni</p>
+            <x-sidebar-link :href="route('alumni.profile.edit')" :active="request()->routeIs('alumni.profile.*')">My Profile</x-sidebar-link>
             <x-sidebar-link href="#" soon>Alumni Directory</x-sidebar-link>
             <x-sidebar-link href="#" soon>Post a Job</x-sidebar-link>
             <x-sidebar-link href="#" soon>Mentorship Requests</x-sidebar-link>
