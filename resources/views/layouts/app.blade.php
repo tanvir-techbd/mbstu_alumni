@@ -70,9 +70,13 @@
                         <x-dropdown align="right" width="48">
                             <x-slot name="trigger">
                                 <button class="flex items-center gap-2">
-                                    <div class="h-8 w-8 rounded-full bg-primary-600 text-white text-xs font-semibold flex items-center justify-center">
-                                        {{ collect(explode(' ', Auth::user()->name))->map(fn ($part) => mb_substr($part, 0, 1))->join('') }}
-                                    </div>
+                                    @if (Auth::user()->profile_photo_path)
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::url(Auth::user()->profile_photo_path) }}" class="h-8 w-8 rounded-full object-cover" alt="{{ Auth::user()->name }}">
+                                    @else
+                                        <div class="h-8 w-8 rounded-full bg-primary-600 text-white text-xs font-semibold flex items-center justify-center">
+                                            {{ collect(explode(' ', Auth::user()->name))->map(fn ($part) => mb_substr($part, 0, 1))->join('') }}
+                                        </div>
+                                    @endif
                                 </button>
                             </x-slot>
 

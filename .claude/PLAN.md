@@ -47,6 +47,19 @@ Suggested build order — dependency-driven (Directory needs Profiles; Notificat
 
 Newest entry first. One entry per milestone/session — what shipped, what's next, anything surprising. Read this before re-deriving context from scratch.
 
+### 2026-07-16 — Seed data polish: Bangladeshi names + real photos everywhere (user-requested, post-M13)
+
+**Done**
+- `Database\Support\BangladeshiNameGenerator` (new): curated Latin-transliteration Bangladeshi name pools (e.g. "Tanvir Ahmed", "Md. Rakibul Islam", "Nusrat Jahan") — deliberately *not* the Faker `bn_BD` provider, which returns Bengali-script names that would (a) look inconsistent in an all-English UI and (b) render as tofu boxes in `DummyAvatarGenerator`'s DejaVu Sans font, which has no Bengali glyphs. `UserFactory` now generates these instead of Faker's default `en_US` names; email local-parts are derived from the name for realism, domain stays on Faker's IANA-reserved `safeEmailDomain()`.
+- `resources/seed-photos/{male,female,scenic}/` (new, bundled — same "no runtime internet dependency" pattern as the existing bundled font, ~2.2MB total): 25 real male portraits + 25 real female portraits (for profile photos, gender-matched via a new `BangladeshiNameGenerator::guessGender()`) and 30 real photographic images (for gallery/story/event content, where a specific face isn't relevant). Downloaded once during this session from public, keyless, no-signup-required sources — never fetched again at seed time.
+- **`DummyAvatarGenerator` and its bundled DejaVu Sans font deleted outright** — fully superseded once every seed-photo call site (profile photos, gallery, success stories) switched to real photos; kept as dead code otherwise.
+- Profile photos extended to *every* seeded user (previously alumni-only) — admin, demo student/faculty, and all bulk students/faculty now get a real, gender-matched photo too.
+- `AlumniProfile.gender` aligned to each user's guessed gender at creation time (previously independently randomized — could mismatch a clearly-gendered name).
+- Event banners (`Event.banner_path` — a column that already existed with full upload/display support since M5, just never populated by the seeder), Gallery images, and Success Story images all now get a real photo from the scenic pool instead of a generated color-block avatar.
+- **Bug found and fixed along the way**: the topbar user-menu avatar (`layouts/app.blade.php`) always rendered hardcoded initials, ignoring `profile_photo_path` entirely — every other real-photo call site respects it, so this was a genuine gap, not a deliberate design choice. Fixed to show the real photo when one exists, falling back to initials otherwise.
+
+**Verified — full HTTP click-through against the real LAMPP-backed DB**: fresh `migrate:fresh --seed` completed cleanly; confirmed 33/33 users have a profile photo, 8/8 events have a banner, 24 gallery images and 3 success-story images all landed as genuine JPEGs on disk (`file` confirmed, not just DB rows); `/events`, `/gallery`, `/success-stories`, and `/dashboard` all render the real `<img>` tags with working `/storage/...` URLs (200, `image/jpeg`); topbar avatar confirmed switched to the real-photo branch (initials markup no longer present) once a photo exists.
+
 ### 2026-07-15 — M13: Feedback
 
 **Done**

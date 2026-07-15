@@ -18,7 +18,7 @@ use App\Models\MentorshipRequest;
 use App\Models\Notice;
 use App\Models\SuccessStory;
 use App\Models\User;
-use Database\Support\DummyAvatarGenerator;
+use Database\Support\BangladeshiNameGenerator;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -27,6 +27,12 @@ use Illuminate\Support\Facades\Storage;
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
+
+    /**
+     * Cycles through the bundled real-photo pool per gender so seeded alumni
+     * don't repeat a photo within a single run (25 available per gender).
+     */
+    private array $photoIndex = ['male' => 0, 'female' => 0];
 
     /**
      * Seed the application's database.
@@ -42,6 +48,7 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $admin->assignRole(RoleName::SuperAdmin->value);
+        $this->attachDummyPhoto($admin);
 
         $alumni = User::factory()->create([
             'name' => 'Demo Alumni',
@@ -50,7 +57,7 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $alumni->assignRole(RoleName::Alumni->value);
-        AlumniProfile::factory()->for($alumni)->create();
+        AlumniProfile::factory()->for($alumni)->create(['gender' => BangladeshiNameGenerator::guessGender($alumni->name)]);
         $this->attachDummyPhoto($alumni);
 
         $student = User::factory()->create([
@@ -60,6 +67,7 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $student->assignRole(RoleName::Student->value);
+        $this->attachDummyPhoto($student);
 
         $faculty = User::factory()->create([
             'name' => 'Demo Faculty',
@@ -68,6 +76,7 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $faculty->assignRole(RoleName::Faculty->value);
+        $this->attachDummyPhoto($faculty);
 
         // Bulk test data for the User Management screen (search/filter/pagination)
         // and the Alumni Verification screen (mixed pending/approved/rejected profiles).
@@ -75,26 +84,47 @@ class DatabaseSeeder extends Seeder
             $user->assignRole(RoleName::Alumni->value);
             $this->attachDummyPhoto($user);
         });
-        $bulkAlumni->slice(0, 6)->each(fn (User $user) => AlumniProfile::factory()->for($user)->create());
+        $bulkAlumni->slice(0, 6)->each(fn (User $user) => AlumniProfile::factory()->for($user)->create([
+            'gender' => BangladeshiNameGenerator::guessGender($user->name),
+        ]));
         $approvedAlumni = $bulkAlumni->slice(6, 4)->values();
-        $approvedAlumni->each(fn (User $user) => AlumniProfile::factory()->approved()->for($user)->create(['reviewed_by' => $admin->id]));
-        $bulkAlumni->slice(10, 2)->each(fn (User $user) => AlumniProfile::factory()->rejected()->for($user)->create(['reviewed_by' => $admin->id]));
+        $approvedAlumni->each(fn (User $user) => AlumniProfile::factory()->approved()->for($user)->create([
+            'reviewed_by' => $admin->id,
+            'gender' => BangladeshiNameGenerator::guessGender($user->name),
+        ]));
+        $bulkAlumni->slice(10, 2)->each(fn (User $user) => AlumniProfile::factory()->rejected()->for($user)->create([
+            'reviewed_by' => $admin->id,
+            'gender' => BangladeshiNameGenerator::guessGender($user->name),
+        ]));
 
-        User::factory(8)->create()->each(fn (User $user) => $user->assignRole(RoleName::Student->value));
-        User::factory(5)->create()->each(fn (User $user) => $user->assignRole(RoleName::Faculty->value));
+        User::factory(8)->create()->each(function (User $user) {
+            $user->assignRole(RoleName::Student->value);
+            $this->attachDummyPhoto($user);
+        });
+        User::factory(5)->create()->each(function (User $user) {
+            $user->assignRole(RoleName::Faculty->value);
+            $this->attachDummyPhoto($user);
+        });
 
         User::factory(4)->create(['status' => User::STATUS_INACTIVE])
             ->each(function (User $user) {
                 $user->assignRole(RoleName::Alumni->value);
-                AlumniProfile::factory()->for($user)->create();
+                AlumniProfile::factory()->for($user)->create([
+                    'gender' => BangladeshiNameGenerator::guessGender($user->name),
+                ]);
                 $this->attachDummyPhoto($user);
             });
 
         // Events: a mix of statuses and creators for the M5 module.
         $publishedEvents = Event::factory(3)->published()->create(['created_by' => $faculty->id]);
         $publishedEvents->push(Event::factory()->published()->create(['created_by' => $admin->id]));
-        Event::factory(2)->create(['created_by' => $faculty->id]); // drafts
-        Event::factory(2)->archived()->create(['created_by' => $admin->id]);
+        $draftEvents = Event::factory(2)->create(['created_by' => $faculty->id]); // drafts
+        $archivedEvents = Event::factory(2)->archived()->create(['created_by' => $admin->id]);
+
+        $publishedEvents->merge($draftEvents)->merge($archivedEvents)->each(function (Event $event) {
+            $event->banner_path = $this->storeScenicPhoto('event-banners', 'seed-'.$event->id.'.jpg');
+            $event->save();
+        });
 
         $registrants = User::role(RoleName::Alumni->value)->inRandomOrder()->take(5)->get()
             ->merge(User::role(RoleName::Student->value)->inRandomOrder()->take(3)->get())
@@ -146,12 +176,8 @@ class DatabaseSeeder extends Seeder
 
         $publishedStories->each(function (SuccessStory $story) {
             $story->images()->create([
-                'image_path' => 'success-story-images/seed-'.$story->id.'.png',
+                'image_path' => $this->storeScenicPhoto('success-story-images', 'seed-'.$story->id.'.jpg'),
             ]);
-            Storage::disk('public')->put(
-                'success-story-images/seed-'.$story->id.'.png',
-                DummyAvatarGenerator::generate($story->title)
-            );
         });
 
         // Donation campaigns + donations spread across the last 6 months, so the
@@ -186,9 +212,9 @@ class DatabaseSeeder extends Seeder
             ]);
 
             foreach (range(1, rand(3, 6)) as $i) {
-                $path = 'gallery-images/seed-'.$gallery->id.'-'.$i.'.png';
-                Storage::disk('public')->put($path, DummyAvatarGenerator::generate($gallery->title.' '.$i));
-                $gallery->images()->create(['image_path' => $path]);
+                $gallery->images()->create([
+                    'image_path' => $this->storeScenicPhoto('gallery-images', 'seed-'.$gallery->id.'-'.$i.'.jpg'),
+                ]);
             }
         }
 
@@ -251,15 +277,38 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Generate a placeholder avatar (initials over a colored background) so
-     * seeded alumni have a photo in the Directory instead of a blank fallback.
+     * Attach a real (bundled, royalty-free) face photo matching the user's
+     * guessed gender, cycling through the pool so photos don't repeat within
+     * a run — real photos read far better in the Directory than initials.
      */
     private function attachDummyPhoto(User $user): void
     {
-        $path = 'profile-photos/'.$user->id.'.png';
+        $gender = BangladeshiNameGenerator::guessGender($user->name);
+        $photos = glob(resource_path("seed-photos/{$gender}/*.jpg"));
+        sort($photos);
 
-        Storage::disk('public')->put($path, DummyAvatarGenerator::generate($user->name));
+        $photo = $photos[$this->photoIndex[$gender] % count($photos)];
+        $this->photoIndex[$gender]++;
+
+        $path = 'profile-photos/'.$user->id.'.jpg';
+        Storage::disk('public')->put($path, file_get_contents($photo));
 
         $user->update(['profile_photo_path' => $path]);
+    }
+
+    /**
+     * Copy a random real (bundled, royalty-free) photo from the scenic pool
+     * into the given storage folder — used for event banners, gallery
+     * photos, and success story images, where a specific person's face
+     * isn't relevant, just realistic photographic content.
+     */
+    private function storeScenicPhoto(string $folder, string $filename): string
+    {
+        $photos = glob(resource_path('seed-photos/scenic/*.jpg'));
+        $path = $folder.'/'.$filename;
+
+        Storage::disk('public')->put($path, file_get_contents($photos[array_rand($photos)]));
+
+        return $path;
     }
 }
