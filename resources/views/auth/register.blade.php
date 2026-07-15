@@ -1,4 +1,9 @@
-<x-guest-layout>
+<x-guest-layout :title="'Create your account — '.config('app.name')">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold">Create your account</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Join the MBSTU alumni network in a couple of minutes.</p>
+    </div>
+
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
@@ -55,14 +60,13 @@
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('login') }}">
-                {{ __('Already registered?') }}
-            </a>
-
-            <x-primary-button class="ms-4">
-                {{ __('Register') }}
-            </x-primary-button>
-        </div>
+        <button type="submit" class="mt-6 w-full rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 transition">
+            {{ __('Create account') }}
+        </button>
     </form>
+
+    <p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        Already registered?
+        <a href="{{ route('login') }}" class="font-medium text-primary-600 dark:text-primary-400 hover:underline">Log in</a>
+    </p>
 </x-guest-layout>

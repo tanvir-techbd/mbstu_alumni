@@ -17,11 +17,11 @@ Suggested build order — dependency-driven (Directory needs Profiles; Notificat
 - [x] **M6 — Job Portal.** Verified-alumni-only posting → pending approval → admin publish/reject workflow, browse/search/bookmark for everyone. Table named `job_postings` to avoid colliding with Laravel's own `jobs` (queue) table.
 - [x] **M7 — Mentorship.** Student requests a verified alumni mentor (via a "Request Mentorship" button on the Directory profile page, not a separate browse UI) → accept/reject → schedule meeting → completed, or student withdraws while pending.
 - [x] **M8 — Notice Board.** Notice/circular/scholarship/news/announcement by admin+faculty, search, attachment download, bookmarks. Deliberately no draft/publish workflow — the brief doesn't ask for one here, unlike Events.
-- [ ] **M9 — Success Stories.** Submit → admin approval → published.
-- [ ] **M10 — Donations.** Campaigns, donate, history, receipts, admin reports.
-- [ ] **M11 — Gallery.** Albums by category, lazy-loaded image preview.
-- [ ] **M12 — Documents.** Categorized repository, secure download.
-- [ ] **M13 — Feedback.** Suggestions/complaints/feature requests, admin reply/close, export.
+- [x] **M9 — Success Stories.** Verified-alumni-only submission (same rule as Job Portal) → pending → admin approve/reject → published, with a multi-image gallery per story.
+- [x] **M10 — Donations.** Campaigns (admin-only), donate (record-based, no payment gateway), history, PDF receipts, admin reports. Also installed Chart.js and wired both admin dashboard charts; fixed an M6 gap (admin's "Jobs" card was never actually connected).
+- [x] **M11 — Gallery.** Admin+faculty album management (Notice Board shape, not Events/Jobs — no visibility scoping needed), multi-photo albums with lightbox preview and native lazy loading.
+- [x] **M12 — Documents.** Categorized repository, secure download.
+- [x] **M13 — Feedback.** Suggestions/complaints/feature requests, admin reply/close, export.
 - [ ] **M14 — Notifications.** In-app + email, wired into triggers from M3/M5/M6/M7/M10.
 - [ ] **M15 — Reports.** PDF/Excel export for alumni list, events, jobs, donations, verification status.
 - [ ] **M16 — Activity Log.** Login/logout, profile update, job creation, event registration, donation, approval actions.
@@ -46,6 +46,121 @@ Suggested build order — dependency-driven (Directory needs Profiles; Notificat
 ## Progress log
 
 Newest entry first. One entry per milestone/session — what shipped, what's next, anything surprising. Read this before re-deriving context from scratch.
+
+### 2026-07-15 — M13: Feedback
+
+**Done**
+- `feedback_tickets` (`user_id` nullable + `nullOnDelete` — submitter, `type` enum-cast `suggestion`/`complaint`/`feature-request`, `subject`, `message`, `status` enum-cast `open`/`closed` default `open`, nullable `closed_at`) + `feedback_replies` (`feedback_ticket_id` `cascadeOnDelete`, `user_id` nullable + `nullOnDelete` — replier, `message`).
+- **Structure decision, distinct from every module since M8**: this is a submit-then-manage workflow like Alumni Verification (M3), not a peer-content module — so it did *not* get the "faculty/creator manages own content" treatment used by Notice/Gallery/Documents. `FeedbackTicketPolicy`: `create` is open to all four roles, `view`/`reply` require being the ticket's owner or `super-admin`, `close`/`export` are `super-admin`-only. Tickets support a real back-and-forth thread — the owner can reply to their own ticket, not just receive a single admin response — but only admin can close it.
+- **No `edit` route** — same precedent as Job Postings/Success Stories/Documents: once submitted, a ticket flows through state (open → closed) rather than being edited.
+- Reply-blocked-when-closed is enforced as a **state check in `StoreFeedbackReplyRequest::withValidator()`**, not a Policy rule — kept separate from the identity check in `FeedbackTicketPolicy::reply()`, matching the state-vs-identity separation used throughout (e.g. Job Posting/Success Story approval flows never conflate "who" with "what state").
+- `index` is dual-purpose in one controller/query: `super-admin` sees every ticket (search/type/status filterable), everyone else sees only their own — no separate admin route, no second controller.
+- `FeedbackTicketsExport` (`FromCollection`/`WithHeadings`) — same shape as M5's `EventParticipantsExport`, admin-only route ordered before the `{ticket}` wildcard.
+- Sidebar: the single (not four-role-duplicated, unlike Documents) "Feedback" placeholder lives in the shared "Account" block outside any `@role` conditional — correct, since submission is open to every role — wired to the real route.
+- `FeedbackTicketFactory` (+ `closed()` state) and seeder: 9 tickets across alumni/student/faculty submitters (6 open, 3 closed), 2 with a real admin reply already in the thread, replies inserted via direct property assignment (not a fillable-array `create()`) for `feedback_ticket_id`/`user_id`, consistent with the FK pattern held clean since M8.
+
+**Verified — full HTTP click-through against the real LAMPP-backed DB**:
+- Admin: index shows all 9 tickets; can open any ticket regardless of owner; export returns a genuine `.xlsx` (`Microsoft Excel 2007+` via `file`, and the newly-created test ticket's subject was found in `xl/sharedStrings.xml` — not just a header check).
+- Alumni: index scoped to exactly their own ticket; blocked (403, with a real CSRF token — distinguished from the CSRF-419 false positive an unauthenticated-token POST gives) from viewing another user's ticket, from `/feedback/export`, and from closing a ticket.
+- Full thread lifecycle exercised end-to-end: alumni submitted a new ticket → replied to their own open ticket → admin replied → admin closed it → confirmed in DB (`status = closed`, exactly 2 replies) → alumni's further reply attempt correctly added **no** third reply row (validator's state check held), and the show page correctly fell back to "This ticket is closed" instead of a broken/empty reply form.
+- Unauthenticated request to `/feedback` redirected (302).
+- Reset to `migrate:fresh --seed` afterward; confirmed 9 tickets in the clean seeded state.
+
+**Next milestone:** M14 — Notifications (in-app + email, wired into triggers from M3/M5/M6/M7/M10).
+
+### 2026-07-15 — M12: Documents
+
+**Done**
+- `documents` table: `title`, `category` (string, `DocumentCategory` enum cast — `newsletter`/`annual-report`/`magazine`/`forms`), nullable `description`, `file_path`, nullable `file_size` (bytes), `uploaded_by` nullable + `nullOnDelete`.
+- **Deliberate disk decision, distinct from every prior module's attachments**: Notice attachments, Gallery photos, and success-story images all live on the `public` disk (directly linkable). Documents use the `local` disk instead — `storage/app/private`, no public symlink, no direct URL — so every download is forced through `DocumentController::download()` (`Storage::disk('local')->download()`), not a static asset URL. This is the "secure download" the brief asks for.
+- **Structure decision, same reasoning as M8/M11**: no draft/pending workflow attached to this module, so it got the Notice Board/Gallery treatment — one controller, `role:super-admin|faculty` route middleware, `DocumentPolicy::manages()` restricting faculty to their own uploads (admin manages all). **No `show` route** — unlike Notice/Gallery, a document has nothing worth a detail page (title/category/description all fit on the index row); the only per-document actions are download/edit/delete, all reachable straight from the index.
+- `DocumentService` mirrors `NoticeService`'s shape: direct-property-assignment for `uploaded_by` (no fillable-array FK bug), old file deleted from disk before a replacement is stored on update, file deleted from disk before the row on delete.
+- `Document::formattedSize()` — a small model accessor (bytes → B/KB/MB/GB) added because no existing helper did this anywhere in the codebase; kept off the view to avoid duplicating the unit-conversion loop if a second place ever needs it.
+- Sidebar: all four roles' "Documents" placeholder (identical markup in all four spots) wired to the real route in one `replace_all` edit.
+- `DocumentFactory` + seeder: one document per category (4) from admin, plus one faculty-uploaded "Membership Form" — each seeded with a real minimal PDF written to the private disk (same dummy-PDF bytes already used for Notice attachments in M8), so downloads are genuinely exercisable, not just DB rows.
+
+**Verified — full HTTP click-through against the real LAMPP-backed DB**:
+- Admin: index (200), create page (200), edit on any document regardless of uploader (200 — super-admin bypass), download returns `Content-Type: application/pdf` with a correct `Content-Disposition` filename.
+- Faculty: create page (200), edit own document (200), edit an admin-uploaded document blocked (403 — "own content only" rule holds, same as Gallery/Notice).
+- Alumni: index (200) and download (200 — any authenticated user can read/download), create and edit both blocked (403).
+- Unauthenticated request to `/documents` redirected (302), not served.
+- Full write path exercised end-to-end as faculty: created a document with a real PDF upload (verified row + file landed on the private disk), updated its title/category (verified DB), deleted it (verified both the row and the on-disk file were gone afterward). One false-start caught during this: an initial upload used a plain-text file renamed to `.pdf`, correctly rejected by the `mimes:pdf,...` rule (422 back to the create form) — confirms the MIME validation is checking real file content, not the extension.
+- Reset to `migrate:fresh --seed` afterward; confirmed 5 documents in the clean seeded state.
+
+**Next milestone:** M13 — Feedback (suggestions/complaints/feature requests, admin reply/close, export). *(done — see the M13 entry above.)*
+
+### 2026-07-15 — M11: Gallery
+
+**Done**
+- `galleries` (albums: `title`, `category` enum, nullable `description`, `created_by` nullable + `nullOnDelete`) + `gallery_images` (1:many, `cascadeOnDelete` on the parent — same shape as `success_story_images`). Deliberately **no `cover_image_path` column** — the cover is `$gallery->images->first()`, computed dynamically, so there's no separate field that can point at a deleted image or drift out of sync with the actual image set.
+- **Structure decision, explicitly matched to M8's reasoning, not M5/M6/M9's**: the brief doesn't attach a specific role or workflow to "Album Management," and unlike Events/Jobs/Success Stories there's no draft/pending state to scope visibility around — so this got the Notice Board treatment: `role:super-admin|faculty` route middleware, `GalleryPolicy::manages()` restricting faculty to their own albums (admin manages all), and **one controller**, not the two-controller split.
+- **Route-ordering mistake caught and fixed before it shipped, not after**: first draft split `Route::resource('gallery', ...)` into two separate calls (one for public index/show, one for admin-only create/store/edit/update/destroy under role middleware) — but registering them as two separate resource() calls means the second call's `create` (a literal path) gets registered *after* the first call's `show` (the `{gallery}` wildcard), which would swallow `/gallery/create` as an attempt to look up a Gallery with ID `"create"`. Rewrote using the same explicit-route, correct-ordering pattern already established for Events/Jobs/Success Stories instead of trusting `Route::resource()` split across two middleware groups.
+- Lightbox: a single Alpine `x-data="{ lightbox: null }"` on the page, each thumbnail sets `lightbox` to its own full-size URL on click, one shared overlay renders whichever is set — no per-image modal instances needed. Lazy loading is just the native `loading="lazy"` attribute, no JS library.
+- `GalleryService::create()`/`update()` use the same direct-property-assignment pattern for `created_by` that's held clean since M8; `attachImages()` uses the relation-based `create()` pattern (safe because `image_path` is genuinely the only fillable field beyond the auto-injected FK), same as Success Stories' image handling.
+- **No dashboard changes** — consistent with M9's Success Stories decision, none of the four dashboards' spec'd card lists mention Gallery, so nothing was wired and nothing was invented.
+- Sidebar: all four roles' "Gallery" placeholder (identical markup in all four spots) wired to the real route in one `replace_all` edit.
+- `GalleryFactory` + seeder: one album per category (5 total), 3–6 generated placeholder photos each via the existing `DummyAvatarGenerator`, created by a mix of admin and faculty.
+
+**Verified — full HTTP click-through against the real LAMPP-backed DB**:
+- Student saw all 5 albums (no visibility scoping, as designed) and was blocked (403) from `/gallery/create`.
+- Category filter (`?category=reunion`) rendered correctly.
+- Album detail page: confirmed `loading="lazy"` present on every image (6 for the reunion album, matching the seeded count exactly).
+- Faculty created a new album with a real PNG upload → image correctly attached (`images()->count() === 1`).
+- Deleted that image via its own dedicated route → gone.
+- Faculty blocked (403) trying to edit an admin-created album — the "own content only" rule holds.
+- Faculty deleted their own (now-empty) album → gone.
+- Reset to `migrate:fresh --seed` afterward.
+
+**Next milestone:** M12 — Documents (categorized repository: newsletter/annual report/magazine/forms, secure download). *(done — see the M12 entry above.)*
+
+### 2026-07-15 — M10: Donation Management
+
+**Done**
+- `donation_campaigns` (`status` enum, excluded from `$fillable`; `created_by` nullable + `nullOnDelete`) + `donations` (`amount`, `payment_method` enum, `transaction_reference`, unique `receipt_number`, `donated_at`; `user_id` nullable + `nullOnDelete` — a financial record should survive account deletion). **Different FK choice than every prior module**: `donations.donation_campaign_id` is `restrictOnDelete()`, not cascade — deleting a campaign must not silently wipe its donation history. `DonationCampaignPolicy::delete()` enforces the same rule at the app layer (only deletable with zero donations), so the constraint is a backstop, not the only guard.
+- **Real interpretation call, stated explicitly rather than silently assumed**: nothing in the tech stack is a payment gateway, so this is a donation-*record* system — a donor declares amount + payment method (bKash/Nagad/bank transfer/card/cash) + optional transaction reference, and it's recorded as completed immediately. Mirrors how a lot of university portals actually work (payment happens offline, the portal handles acknowledgment + receipts) rather than building a fake checkout flow nobody asked for.
+- `DonationService::donate()` and `createCampaign()` use the direct-property-assignment pattern for FKs — the pattern that's now held clean since M8, no repeat of the earlier bug class. Receipt numbers are generated post-insert (`MBSTU-DON-000123`, zero-padded on the row's own auto-increment ID) since the format depends on knowing the ID first — a genuine two-save sequence, not a workaround.
+- **Route parameter bug caught before testing, not during**: `Route::resource('donation-campaigns', ...)` defaults to a snake_case `{donation_campaign}` parameter, but `UpdateDonationCampaignRequest::authorize()` was written looking up `donationCampaign` (camelCase, matching the controller's variable name) — a mismatch that would've made `$this->route(...)` silently return `null` and broken authorization on every campaign edit. Fixed by explicitly setting `->parameters(['donation-campaigns' => 'donationCampaign'])` on the resource route so every reference (controller, manual routes, Form Request) agrees — worth remembering that `Route::resource()`'s default parameter naming doesn't match a manually-typed camelCase model variable, and that mismatch produces no error at boot time, only a silent authorization failure at request time.
+- Receipt download is the first real use of `barryvdh/laravel-dompdf`, installed since M0 and untouched until now.
+- **Chart.js finally installed** (`npm install chart.js`, `chart.js/auto` convenience import, exposed as `window.Chart`) — deferred since M0 specifically until a real chart was needed, which is now. Added a `@stack('scripts')` slot to `layouts/app.blade.php` (didn't exist before) so page-specific `<script>` blocks can push in cleanly instead of being crammed into the shared layout.
+- **Closed two dashboard gaps found while checking placeholders before designing**, not invented as new scope: admin dashboard's "Jobs" stat card was still a placeholder despite M6 shipping (an M6 oversight — only alumni's "Posted Jobs" and student's "Saved Jobs" were wired then, the admin card was missed); and the "Alumni by Department" chart placeholder's stated blocker ("wired once Chart.js is available") is exactly what this milestone fixes, so it got wired alongside Monthly Donations rather than left stale referencing a chart library that now exists.
+- Admin dashboard's 8 stat cards reordered to match the brief's exact list (Total Alumni, Verified Alumni, Students, Faculty, Events, Jobs, Donations, Pending Verification) — previously included a "Total Users" card the brief never asked for and was missing "Donations" entirely.
+- Alumni dashboard's "Donation History" placeholder wired to a real total + count, linking to their history page.
+- Sidebar: admin's Finance section ("Donations" → campaign management, "Reports" → admin reports) wired; added Donations browsing links to alumni/student/faculty (none of them had one before this milestone, even alumni — the brief's "Users can Donate" implies everyone, not just the roles that happened to get a placeholder earlier).
+
+**Verified — full HTTP click-through against the real LAMPP-backed DB**:
+- Student saw exactly 2 active campaigns (not the 1 closed one) and was blocked (403) from `/admin/donation-campaigns`.
+- Full donate flow via real form POST → persisted with correct amount/user/payment method, receipt number correctly formatted from the row's own ID.
+- **Receipt PDF verified with `pdfinfo`/`pdftotext`, not just a 200 status** — `file` reported "0 pages" (a libmagic quirk with dompdf output, not a real defect), so cross-checked with `pdfinfo` (confirmed 1 real page, correct title) and `pdftotext` (confirmed every field — receipt number, amount, donor name, campaign, payment method, transaction reference, date — matches exactly what was submitted).
+- A *different* student got 403 trying to download someone else's receipt.
+- Admin created/closed/deleted an empty campaign; then confirmed deleting a campaign *with* donations correctly fails (403, `restrictOnDelete` + policy both hold) and the campaign survives.
+- Admin report's campaign filter count matched a direct DB query exactly.
+- Admin dashboard: confirmed both chart canvases render with 2 `Chart(...)` instantiations, the Jobs card now shows the real DB count (7, matching the fixed gap), and the Donations card shows the correct running total.
+- Reset to `migrate:fresh --seed` afterward.
+
+**Next milestone:** M11 — Gallery (albums by category, lazy-loaded image preview).
+
+### 2026-07-15 — M9: Success Stories
+
+**Done**
+- `success_stories` (`status` enum, excluded from `$fillable`, `forceFill()`-via-service; `user_id`/`reviewed_by` nullable + `nullOnDelete`) + `success_story_images` (separate 1:many table, `cascadeOnDelete` on the parent — the brief says "Images" plural, so this is a small gallery per story, not a single photo field like most other modules' logos/banners).
+- Same authorization shape as Job Portal: create requires `hasRole('alumni') && alumniProfile?->verification_status === Approved`; submitter or super-admin can edit/delete; only super-admin approves/rejects; pending/rejected visible only to the submitter or super-admin (`scopeVisibleTo`, same shape as `Event`/`JobPosting`).
+- **Structure decision, explicitly contrasted with M8**: this module *does* get the two-controller split (`SuccessStoryController` for browse/show, `SuccessStoryManagementController` for create/edit/delete/approve/reject/image-removal) because it has the same real visibility-scoping complexity Events/Jobs have (pending/rejected hidden from most viewers) — unlike Notice Board, which correctly used one controller because it had no such scoping. Keeping the two decisions consistent with their actual reasons, not just copying the more recent pattern.
+- `SuccessStoryService::create()`/`update()` use the same direct-property-assignment pattern for `user_id` that finally fixed the M3/M5/M7 bug class in M8 — continued here rather than reverting to the array-based `create()` that caused it originally.
+- Image management: `attachImages()` uses `$story->images()->create([...])`, which is safe by construction (the `hasMany` relation auto-injects `success_story_id` via `setAttribute()`, bypassing guarding, and `image_path` is the only other field, which *is* fillable) — a second example, after event registrations, of the relationship-based `create()` pattern being safe as long as the non-FK fields are properly fillable.
+- Views: index (card grid, first image as thumbnail) and show (full image grid + story text + management actions) follow the Jobs/Events visual pattern; create/edit share `_form.blade.php` with a multi-file `images[]` input and per-image delete buttons for existing images on the edit page.
+- **No dashboard changes** — none of the four dashboards' spec'd card lists mention Success Stories, so no placeholder existed to wire and none was invented.
+- Sidebar: wired the two existing placeholders (admin's Content section, alumni's "Submit Success Story") to the real route, and — since published stories should be readable by everyone, not just the two roles the brief happened to mention — added a browsing link to student's and faculty's Resources sections too, which didn't have one at all before this milestone.
+- `SuccessStoryFactory` (`published()`/`rejected()` states) + seeder: 5 stories from *verified* alumni only (3 published with a generated placeholder image each via the existing `DummyAvatarGenerator`, 1 pending, 1 rejected).
+
+**Verified — full HTTP click-through against the real LAMPP-backed DB**:
+- Unverified Demo Alumni got 403 on `/success-stories/create` and saw exactly 3 (published-only) on the index.
+- A genuinely verified alumni submitted a story with a real PNG image (not a placeholder file) via multipart upload → persisted as `pending` with the image correctly attached (`images()->count() === 1`).
+- Admin's index showed all 6 (5 seeded + 1 new) — approved the new story (→ `published`) and rejected a different pending one (reason persisted).
+- A *different* alumni (not the story's author) got 403 trying to edit it — the "own content only" rule holds across alumni accounts, not just against students/faculty.
+- Deleted an individual image from the story via its own dedicated route — row actually gone, not just hidden.
+- Reset to `migrate:fresh --seed` afterward.
+
+**Next milestone:** M10 — Donation Management (campaigns, donate, history, receipts, admin reports/stats).
 
 ### 2026-07-15 — M8: Notice Board
 

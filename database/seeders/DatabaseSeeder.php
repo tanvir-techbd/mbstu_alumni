@@ -2,12 +2,21 @@
 
 namespace Database\Seeders;
 
+use App\Enums\DocumentCategory;
+use App\Enums\GalleryCategory;
 use App\Enums\RoleName;
 use App\Models\AlumniProfile;
+use App\Models\Document;
+use App\Models\Donation;
+use App\Models\DonationCampaign;
 use App\Models\Event;
+use App\Models\FeedbackReply;
+use App\Models\FeedbackTicket;
+use App\Models\Gallery;
 use App\Models\JobPosting;
 use App\Models\MentorshipRequest;
 use App\Models\Notice;
+use App\Models\SuccessStory;
 use App\Models\User;
 use Database\Support\DummyAvatarGenerator;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -128,6 +137,117 @@ class DatabaseSeeder extends Seeder
         });
 
         $notices->first()->bookmarkedBy()->attach($student->id);
+
+        // Success Stories: only from *verified* alumni, same rule as Job Portal.
+        $publishedStories = SuccessStory::factory(2)->published()->create(['user_id' => $approvedAlumni[0]->id]);
+        $publishedStories->push(SuccessStory::factory()->published()->create(['user_id' => $approvedAlumni[1]->id]));
+        SuccessStory::factory()->create(['user_id' => $approvedAlumni[2]->id]); // pending
+        SuccessStory::factory()->rejected()->create(['user_id' => $approvedAlumni[3]->id]);
+
+        $publishedStories->each(function (SuccessStory $story) {
+            $story->images()->create([
+                'image_path' => 'success-story-images/seed-'.$story->id.'.png',
+            ]);
+            Storage::disk('public')->put(
+                'success-story-images/seed-'.$story->id.'.png',
+                DummyAvatarGenerator::generate($story->title)
+            );
+        });
+
+        // Donation campaigns + donations spread across the last 6 months, so the
+        // admin dashboard's Monthly Donations chart has real data to render.
+        $campaigns = DonationCampaign::factory(2)->create(['created_by' => $admin->id]);
+        $campaigns->push(DonationCampaign::factory()->closed()->create(['created_by' => $admin->id]));
+
+        $donors = User::role(RoleName::Alumni->value)->inRandomOrder()->take(6)->get()
+            ->merge(User::role(RoleName::Student->value)->inRandomOrder()->take(4)->get())
+            ->push($alumni)
+            ->push($student)
+            ->unique('id')
+            ->values();
+
+        foreach (range(0, 14) as $i) {
+            $donation = Donation::factory()->make([
+                'donation_campaign_id' => $campaigns->random()->id,
+                'user_id' => $donors->random()->id,
+                'donated_at' => now()->subMonths(rand(0, 5))->subDays(rand(0, 27)),
+            ]);
+            $donation->receipt_number = 'PENDING';
+            $donation->save();
+            $donation->receipt_number = 'MBSTU-DON-'.str_pad((string) $donation->id, 6, '0', STR_PAD_LEFT);
+            $donation->save();
+        }
+
+        // Gallery: one album per category, a handful of placeholder photos each.
+        foreach (GalleryCategory::cases() as $category) {
+            $gallery = Gallery::factory()->create([
+                'category' => $category->value,
+                'created_by' => fake()->boolean() ? $admin->id : $faculty->id,
+            ]);
+
+            foreach (range(1, rand(3, 6)) as $i) {
+                $path = 'gallery-images/seed-'.$gallery->id.'-'.$i.'.png';
+                Storage::disk('public')->put($path, DummyAvatarGenerator::generate($gallery->title.' '.$i));
+                $gallery->images()->create(['image_path' => $path]);
+            }
+        }
+
+        // Documents: one of each category from admin, plus a couple from faculty,
+        // each with a real (dummy) file on the private disk so downloads work.
+        foreach (DocumentCategory::cases() as $category) {
+            $document = Document::factory()->create([
+                'category' => $category->value,
+                'uploaded_by' => $admin->id,
+                'file_path' => 'PENDING',
+            ]);
+            $path = 'documents/seed-'.$document->id.'.pdf';
+            Storage::disk('local')->put($path, $dummyPdf);
+            $document->file_path = $path;
+            $document->file_size = Storage::disk('local')->size($path);
+            $document->save();
+        }
+
+        $facultyDocument = Document::factory()->create([
+            'category' => DocumentCategory::Forms->value,
+            'title' => 'Alumni Association Membership Form',
+            'uploaded_by' => $faculty->id,
+            'file_path' => 'PENDING',
+        ]);
+        $facultyPath = 'documents/seed-'.$facultyDocument->id.'.pdf';
+        Storage::disk('local')->put($facultyPath, $dummyPdf);
+        $facultyDocument->file_path = $facultyPath;
+        $facultyDocument->file_size = Storage::disk('local')->size($facultyPath);
+        $facultyDocument->save();
+
+        // Feedback: a mix of open/closed tickets from different roles, a couple
+        // with an admin reply already in the thread.
+        $openTicket = FeedbackTicket::factory()->create(['user_id' => $alumni->id]);
+        $this->addReply($openTicket, $admin, 'Thanks for the suggestion, we\'re looking into it.');
+
+        FeedbackTicket::factory()->create(['user_id' => $student->id]);
+
+        $closedTicket = FeedbackTicket::factory()->closed()->create(['user_id' => $faculty->id]);
+        $this->addReply($closedTicket, $admin, 'Resolved — please let us know if the issue comes back.');
+
+        FeedbackTicket::factory(4)->create([
+            'user_id' => fn () => User::role(RoleName::Alumni->value)->inRandomOrder()->first()->id,
+        ]);
+        FeedbackTicket::factory(2)->closed()->create([
+            'user_id' => fn () => User::role(RoleName::Student->value)->inRandomOrder()->first()->id,
+        ]);
+    }
+
+    /**
+     * Direct-property-assignment (not a fillable-array create()) so the FKs
+     * on FeedbackReply, which are deliberately excluded from $fillable, land
+     * correctly — same pattern used for every posted_by/created_by FK since M8.
+     */
+    private function addReply(FeedbackTicket $ticket, User $replier, string $message): void
+    {
+        $reply = new FeedbackReply(['message' => $message]);
+        $reply->feedback_ticket_id = $ticket->id;
+        $reply->user_id = $replier->id;
+        $reply->save();
     }
 
     /**

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\AlumniVerificationController;
+use App\Http\Controllers\Admin\DonationCampaignController;
+use App\Http\Controllers\Admin\DonationReportController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,4 +17,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'role:su
         Route::post('/{alumniProfile}/approve', [AlumniVerificationController::class, 'approve'])->name('approve');
         Route::post('/{alumniProfile}/reject', [AlumniVerificationController::class, 'reject'])->name('reject');
     });
+
+    Route::post('/donation-campaigns/{donationCampaign}/close', [DonationCampaignController::class, 'close'])->name('donation-campaigns.close');
+    Route::post('/donation-campaigns/{donationCampaign}/reopen', [DonationCampaignController::class, 'reopen'])->name('donation-campaigns.reopen');
+    Route::resource('donation-campaigns', DonationCampaignController::class)
+        ->except('show')
+        ->parameters(['donation-campaigns' => 'donationCampaign']);
+
+    Route::get('/donation-reports', [DonationReportController::class, 'index'])->name('donation-reports.index');
 });

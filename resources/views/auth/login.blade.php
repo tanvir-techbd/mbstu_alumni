@@ -1,4 +1,9 @@
-<x-guest-layout>
+<x-guest-layout :title="'Log in — '.config('app.name')">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold">Welcome back</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Log in to reconnect with your MBSTU network.</p>
+    </div>
+
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
@@ -32,16 +37,21 @@
             </label>
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}">
+        @if (Route::has('password.request'))
+            <div class="flex justify-end mt-4">
+                <a class="text-sm text-primary-600 dark:text-primary-400 hover:underline" href="{{ route('password.request') }}">
                     {{ __('Forgot your password?') }}
                 </a>
-            @endif
+            </div>
+        @endif
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
+        <button type="submit" class="mt-6 w-full rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 transition">
+            {{ __('Log in') }}
+        </button>
     </form>
+
+    <p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        Don't have an account?
+        <a href="{{ route('register') }}" class="font-medium text-primary-600 dark:text-primary-400 hover:underline">Sign up</a>
+    </p>
 </x-guest-layout>

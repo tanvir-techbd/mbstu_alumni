@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -69,5 +70,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function bookmarkedNotices(): BelongsToMany
     {
         return $this->belongsToMany(Notice::class, 'notice_bookmarks')->withTimestamps();
+    }
+
+    public function donations(): HasMany
+    {
+        return $this->hasMany(Donation::class);
     }
 }

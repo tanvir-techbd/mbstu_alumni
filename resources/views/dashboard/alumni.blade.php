@@ -17,7 +17,9 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <x-stat-card-placeholder label="Donation History" milestone="M10 — Donations" />
+            <a href="{{ route('donations.history') }}" class="block">
+                <x-stat-card label="Donation History" value="{{ '৳'.number_format((float) $totalDonated, 2) }}" hint="{{ $donationCount }} donation(s) — view history" />
+            </a>
 
             @php
                 $statusTone = match ($profile->verification_status) {

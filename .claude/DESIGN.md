@@ -176,7 +176,7 @@ Verification documents, job company logos, event banners, gallery images, docume
 - Tailwind utility classes directly in Blade; component-level reuse via Blade components (`resources/views/components/`), not a CSS component layer — matches Breeze's existing convention (see `x-primary-button`, `x-text-input`, etc.) and the new `x-dark-mode-toggle`.
 - Alpine.js `Alpine.store()` for cross-component state that needs to persist across a page (dark mode, sidebar open/closed) — set up in `resources/js/app.js`. Component-local interactivity uses plain `x-data`.
 - Dark mode: `class` strategy (not `media`), toggled by `Alpine.store('darkMode')`, persisted to `localStorage`, applied pre-paint via an inline `<script>` in `<head>` to avoid a flash of the wrong theme. Any new top-level layout must repeat that inline script (see `resources/views/layouts/app.blade.php` and `guest.blade.php`).
-- Chart.js: not yet added to `package.json`. Add it (`npm install chart.js`) when the first dashboard with a real chart is built (M1/M15), don't add it speculatively now.
+- Chart.js: added in M10 (`npm install chart.js`, `chart.js/auto` import, exposed as `window.Chart`) once the admin dashboard's Monthly Donations chart gave it a real use — deliberately not added any earlier. Page-specific chart init scripts go through `@push('scripts')` / `@stack('scripts')` in `layouts/app.blade.php`, not inline in the shared layout.
 
 ### Why MySQL over SQLite for local dev
 

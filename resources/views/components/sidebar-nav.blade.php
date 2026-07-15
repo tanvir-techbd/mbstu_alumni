@@ -26,15 +26,15 @@
             <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
             <x-sidebar-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">Jobs</x-sidebar-link>
             <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Success Stories</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
+            <x-sidebar-link :href="route('success-stories.index')" :active="request()->routeIs('success-stories.*')">Success Stories</x-sidebar-link>
+            <x-sidebar-link :href="route('gallery.index')" :active="request()->routeIs('gallery.*')">Gallery</x-sidebar-link>
+            <x-sidebar-link :href="route('documents.index')" :active="request()->routeIs('documents.*')">Documents</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Finance</p>
-            <x-sidebar-link href="#" soon>Donations</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Reports</x-sidebar-link>
+            <x-sidebar-link :href="route('admin.donation-campaigns.index')" :active="request()->routeIs('admin.donation-campaigns.*')">Donations</x-sidebar-link>
+            <x-sidebar-link :href="route('admin.donation-reports.index')" :active="request()->routeIs('admin.donation-reports.*')">Reports</x-sidebar-link>
         </div>
     @endrole
 
@@ -45,16 +45,16 @@
             <x-sidebar-link :href="route('directory.index')" :active="request()->routeIs('directory.*')">Alumni Directory</x-sidebar-link>
             <x-sidebar-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">Jobs</x-sidebar-link>
             <x-sidebar-link :href="route('mentorship.index')" :active="request()->routeIs('mentorship.*')">Mentorship Requests</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Submit Success Story</x-sidebar-link>
+            <x-sidebar-link :href="route('success-stories.index')" :active="request()->routeIs('success-stories.*')">Success Stories</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Community</p>
             <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Donations</x-sidebar-link>
+            <x-sidebar-link :href="route('donations.index')" :active="request()->routeIs('donations.*')">Donations</x-sidebar-link>
             <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
+            <x-sidebar-link :href="route('gallery.index')" :active="request()->routeIs('gallery.*')">Gallery</x-sidebar-link>
+            <x-sidebar-link :href="route('documents.index')" :active="request()->routeIs('documents.*')">Documents</x-sidebar-link>
         </div>
     @endrole
 
@@ -64,14 +64,16 @@
             <x-sidebar-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">Job Board</x-sidebar-link>
             <x-sidebar-link :href="route('mentorship.index')" :active="request()->routeIs('mentorship.*')">My Mentorship</x-sidebar-link>
             <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
+            <x-sidebar-link :href="route('donations.index')" :active="request()->routeIs('donations.*')">Donations</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Resources</p>
             <x-sidebar-link :href="route('directory.index')" :active="request()->routeIs('directory.*')">Alumni Directory</x-sidebar-link>
             <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
+            <x-sidebar-link :href="route('success-stories.index')" :active="request()->routeIs('success-stories.*')">Success Stories</x-sidebar-link>
+            <x-sidebar-link :href="route('gallery.index')" :active="request()->routeIs('gallery.*')">Gallery</x-sidebar-link>
+            <x-sidebar-link :href="route('documents.index')" :active="request()->routeIs('documents.*')">Documents</x-sidebar-link>
         </div>
     @endrole
 
@@ -80,19 +82,21 @@
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Faculty</p>
             <x-sidebar-link :href="route('events.index')" :active="request()->routeIs('events.*')">Events</x-sidebar-link>
             <x-sidebar-link :href="route('notices.index')" :active="request()->routeIs('notices.*')">Notice Board</x-sidebar-link>
+            <x-sidebar-link :href="route('donations.index')" :active="request()->routeIs('donations.*')">Donations</x-sidebar-link>
         </div>
 
         <div>
             <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Resources</p>
             <x-sidebar-link :href="route('directory.index')" :active="request()->routeIs('directory.*')">Alumni Directory</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Gallery</x-sidebar-link>
-            <x-sidebar-link href="#" soon>Documents</x-sidebar-link>
+            <x-sidebar-link :href="route('success-stories.index')" :active="request()->routeIs('success-stories.*')">Success Stories</x-sidebar-link>
+            <x-sidebar-link :href="route('gallery.index')" :active="request()->routeIs('gallery.*')">Gallery</x-sidebar-link>
+            <x-sidebar-link :href="route('documents.index')" :active="request()->routeIs('documents.*')">Documents</x-sidebar-link>
         </div>
     @endrole
 
     <div>
         <p class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Account</p>
         <x-sidebar-link :href="route('profile.edit')" :active="request()->routeIs('profile.edit')">Settings</x-sidebar-link>
-        <x-sidebar-link href="#" soon>Feedback</x-sidebar-link>
+        <x-sidebar-link :href="route('feedback.index')" :active="request()->routeIs('feedback.*')">Feedback</x-sidebar-link>
     </div>
 </nav>
